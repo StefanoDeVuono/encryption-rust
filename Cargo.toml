@@ -1,0 +1,9 @@
+[package]
+authors = ["stefanodevuono"]
+edition = "2018"
+name = "totient-rust"
+version = "0.1.0"
+
+[dependencies]
+ramp = "*"
+rand = "0.5.6"

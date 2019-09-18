@@ -29,17 +29,10 @@ fn little_fermat(candidate: &Int) -> bool {
 }
 
 fn rewrite(num: &Int) -> (Int, Int) {
-    //   var n1 = n.subn(1);
-    //   for (var s = 0; !n1.testn(s); s++) {}
-    //   var d = n.shrn(s);
-    // subn = minus num
-    // testn = test if specified bit is set
-    // shrn = shift right div by two that many times
     let mut ess = 0;
     while num.bit(ess) {
         ess += 1;
     }
-    // let dee = (num + 1) >> ess;
     let dee = num >> (ess as usize);
     (Int::from(ess), dee)
 }
@@ -121,5 +114,19 @@ fn test_miller_rabin() {
     let mut result = miller_rabin(&prime, 5);
     assert_eq!(result, true);
     result = miller_rabin(&not_prime, 5);
+    assert_eq!(result, false);
+}
+
+#[test]
+fn test_titanic_prime() {
+    let ten = Int::from(10);
+    let nine_nine_nine = 999 as usize;
+    let seven = Int::from(7);
+    let thirteen = Int::from(13);
+    let prime = ten.pow(nine_nine_nine) + seven;
+    let not_prime = ten.pow(nine_nine_nine) + thirteen;
+    let mut result = is_prime(&prime);
+    assert_eq!(result, true);
+    result = is_prime(&not_prime);
     assert_eq!(result, false);
 }

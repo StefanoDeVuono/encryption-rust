@@ -10,3 +10,57 @@ Three steps:
    - what does this mean?
    - it means that _e_ is _1 + ik_ and _d_ is _1 + jk_, where _j_ and _i_ are integers.
 1. If we have a message _m_ smaller than our _n_ (the product of _p_ and _q_ from above), we can encrypt it with _m^e % n \_and decrypt the result with _(m^e % n)^d % n\_
+
+say we want to find the ones place of 7^222, aka 7^222 (mod 10)
+7 and 10 are coprime and φ(10) is 4
+7^4=== 1 (mod 10)
+
+=== means congruence
+_a_ and _b_ are congruent modulo _n_
+if _a - b_ is divisible by _n_
+
+eg 37 === 57 (mod 10), since 37-57 is -20 which is a multiple of 10, or
+since they both have remainders of 7 when divided by 10
+Chinese remainder theorem
+
+ed === 1 (mod k)
+
+e === 1 (mod k)
+AND
+d === 1 (mod k)
+
+primes p = 7, q = 11
+_n = pq_ is 77 and _k = φ(n)_ is 60 = φ(77)
+
+_ed === 1 (mod 77)_
+
+78 and 155
+
+const congruence = (mod) => {
+
+const e = 1 + mod
+const d = 1 + (2 \* mod)
+
+return {e, d}
+}
+
+p=61 and q=53
+n=3233
+k = 60\*52 = 3120
+
+d = 1 + 3120
+e = 1 + 2\*3120
+
+message m ("hello" = 43770)
+secret = m^e (mod n)
+text = secret^d (mod n)
+
+p =
+131
+q=127
+
+p = 3061
+q = 3229
+e_totient = (p-1)\*(q-1)
+
+totient = ((p-1) % 4 === 0 && (q-1) % 4 === 0 ) ? e_totient /4 : e_totient

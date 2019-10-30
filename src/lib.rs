@@ -83,6 +83,32 @@ fn is_prime(candidate: &Int) -> bool {
     true
 }
 
+/*
+fn find_large_prime() {}
+
+fn carmichael_totient_of_primes(prime_1: &Int, prime_2: &Int) {
+    return (prime_1 - 1) * (prime_2 - 1) / 4;
+}
+
+struct Keys {
+    public: &Int,
+    private &Int
+}
+
+fn generate_keys(totient: &Int) {
+    let private = 1 + small_rand * totient
+    let public = 1 + large_rand * totient
+    return Keys { private, public };
+}
+
+fn encrypt(message: &Int, public: &Int, n: &Int) {
+    return Int::pow_mod(&message, &public, n);
+}
+
+fn decrypt(encrypted_message: &Int, private: &Int, n: &Int) {
+    return Int::pow_mod(&encrypted_message, &private, n);
+*/
+
 #[cfg(test)]
 #[test]
 fn test_div_small_primes() {
@@ -126,6 +152,7 @@ fn test_titanic_prime() {
     let prime = ten.pow(nine_nine_nine) + seven;
     let not_prime = ten.pow(nine_nine_nine) + thirteen;
     let mut result = is_prime(&prime);
+    println!("{}", prime);
     assert_eq!(result, true);
     result = is_prime(&not_prime);
     assert_eq!(result, false);

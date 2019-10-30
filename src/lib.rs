@@ -144,6 +144,14 @@ fn gcd(u: &Int, v: &Int) -> Int {
     return gcd(&((v - u) >> 1), u);
 }
 
+/*
+Generate a prime candidate. Say we want a 1024 bits prime number. Start by generating 1024 bits randomly. Set the MSB to 1, to make sure that the number hold on 1024 bits. Set the LSB to 1 to make be sure that it’s an odd number.
+
+Test if the generated number is prime with Miller-Rabin. Run the test many time to make it more efficient.
+
+If the number is not prime, restart from the beginning.
+*/
+
 #[cfg(test)]
 #[test]
 fn test_gcd_12() {

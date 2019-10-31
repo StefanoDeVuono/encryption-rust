@@ -339,14 +339,7 @@ fn test_titanic_prime() {
 #[test]
 fn test_encryption_and_decryption() {
     let poem = "To fling my arms wide
-                In some place of the sun,
-                To whirl and to dance
-                Till the white day is done.
-                Then rest at cool evening
-                Beneath a tall tree
-                While night comes on gently,
-                    Dark like me—
-                That is my dream!";
+                In some place of the sun";
 
     let p = &gen_prime();
     let q = &gen_prime();

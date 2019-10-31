@@ -11,6 +11,8 @@ Three steps:
    - it means that _e_ is _1 + ik_ and _d_ is _1 + jk_, where _j_ and _i_ are integers.
 1. If we have a message _m_ smaller than our _n_ (the product of _p_ and _q_ from above), we can encrypt it with _m^e % n \_and decrypt the result with _(m^e % n)^d % n\_
 
+
+### Other random stuff
 say we want to find the ones place of 7^222, aka 7^222 (mod 10)
 7 and 10 are coprime and φ(10) is 4
 7^4=== 1 (mod 10)
@@ -64,3 +66,23 @@ q = 3229
 e_totient = (p-1)\*(q-1)
 
 totient = ((p-1) % 4 === 0 && (q-1) % 4 === 0 ) ? e_totient /4 : e_totient
+
+### Relationship between an Euler totient _φ(p)_ and a Carmichael function _λ(p)_, where p is prime
+1. For a prime number _p_, the Euler totient is _p - 1_.
+    - if _p_ is prime _φ(p) = p - 1_
+    - if _p_ and _q_ are prime _φ(pq) = φ(p)φ(q)_
+    - if _p_ and _q_ are prime _φ(pq) = (p - 1)(q - 1)_    
+1. For a prime number _p_, the Carmichael function is also _p - 1_.
+     - if _p_ is prime _λ(p) = p - 1_
+     - if _p_ and _q_ are prime, is this true? _λ(pq) = φ(p)φ(q) / gcd(p -1, q -1)_ 
+     - if _p_ and _q_ are prime, is this true? _λ(pq) = (p - 1)(q - 1) / gcd(p - 1, q - 1)_
+
+
+    - OR if _p_ and _q_ are prime, is this true? _λ(pq) = φ(p)φ(q) / gcd(p,q)_, where gcd is 2^k
+      NO _φ(3061 * 3229) = 9877680_ and _λ(3061 * 3229) = 823140_. _9877680 = 823140 * 12_
+
+    Maybe garbage:
+    - if _p - 1 = m * 2^k_ and _q - 1 = n * 2^k_
+
+    - might a prime p be defined as  _m * 2^k + 1_
+    - wilson: can a factorial be described as _x ! = m * 2^k_?, of course, since 2^1... 2^n... x

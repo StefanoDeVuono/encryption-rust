@@ -144,15 +144,96 @@ fn gcd(u: &Int, v: &Int) -> Int {
     return gcd(&((v - u) >> 1), u);
 }
 
-/*
-Generate a prime candidate. Say we want a 1024 bits prime number. Start by generating 1024 bits randomly. Set the MSB to 1, to make sure that the number hold on 1024 bits. Set the LSB to 1 to make be sure that it’s an odd number.
+fn gen_prime() -> Int {
+    let mut rng = OsRng::new().expect("Failed to get OS random generator");
+    let n = 1024;
+    let mut candidate = rng.gen_uint(n);
+    candidate.set_bit(0, true);
+    candidate.set_bit((n - 1) as u32, true);
+    if is_prime(&candidate) == true {
+        return candidate;
+    }
+    return gen_prime();
+}
 
-Test if the generated number is prime with Miller-Rabin. Run the test many time to make it more efficient.
+fn convert_to_int(str: String) -> Int {
+    let bytes = str.as_bytes().to_vec();
 
-If the number is not prime, restart from the beginning.
-*/
+    let joined = bytes
+        .iter()
+        .map(|&el| format!("{:03o}", el))
+        .collect::<Vec<String>>()
+        .join("");
+
+    return Int::from_str_radix(&joined, 8).expect("damn");
+}
+
+fn split_into_threes(str: String) -> Vec<String> {
+    if str.len() <= 3 {
+        return vec![str];
+    }
+    let (first, last) = str.split_at(3);
+    let mut arr: (Vec<String>) = vec![first.to_string()];
+    arr.append(&mut split_into_threes(last.to_string()));
+    return arr;
+}
+
+fn convert_to_str(int: Int) -> String {
+    let octal = int.to_str_radix(8, false);
+    let arr = split_into_threes(octal)
+        .iter()
+        .map(|el| u8::from_str_radix(&el, 8).unwrap())
+        .collect::<Vec<u8>>();
+    return String::from_utf8(arr).unwrap();
+}
 
 #[cfg(test)]
+#[test]
+fn test_convert_to_int() {
+    let str = "String and back again.";
+
+    let partial_result = convert_to_int(str.to_string());
+    let arr: (Vec<u8>) = vec![
+        83, 116, 114, 105, 110, 103, 32, 97, 110, 100, 32, 98, 97, 99, 107, 32, 97, 103, 97, 105,
+        110, 46,
+    ];
+    let joined = arr
+        .iter()
+        .map(|&el| format!("{:03o}", el))
+        .collect::<Vec<String>>()
+        .join("");
+    let expected = Int::from_str_radix(&joined, 8).expect("damn");
+
+    assert_eq!(expected, partial_result);
+
+    let final_result = convert_to_str(partial_result);
+    assert_eq!(str.to_string(), final_result);
+}
+
+#[test]
+#[ignore] // it is too expensive
+fn test_gen_prime_trial_division() {
+    let possible_prime = gen_prime();
+    if possible_prime <= 3 {
+        return assert!(possible_prime > 1);
+    } else if &possible_prime % 2 == 0 || &possible_prime % 3 == 0 {
+        return assert!(false);
+    }
+    println!("possible prime");
+    println!("{}", possible_prime);
+    println!("");
+    let mut i = Int::from(5);
+    while (&i.square()) <= &possible_prime {
+        // println!("{}", i);
+        // println!("");
+        if &possible_prime % &i == 0 || &possible_prime % (&i + 2) == 0 {
+            return assert!(false);
+        }
+        i = &i + 6;
+    }
+    return assert!(true);
+}
+
 #[test]
 fn test_gcd_12() {
     let p = &Int::from(3060);
@@ -190,7 +271,7 @@ fn test_carmichael_of_primes_2() {
 }
 
 #[test]
-fn rsa() {
+fn test_rsa() {
     let p = &Int::from(3061);
     let q = &Int::from(3229);
     let n = p * q;
@@ -253,4 +334,34 @@ fn test_titanic_prime() {
     assert_eq!(result, true);
     result = is_prime(&not_prime);
     assert_eq!(result, false);
+}
+
+#[test]
+fn test_encryption_and_decryption() {
+    let poem = "To fling my arms wide
+                In some place of the sun,
+                To whirl and to dance
+                Till the white day is done.
+                Then rest at cool evening
+                Beneath a tall tree
+                While night comes on gently,
+                    Dark like me—
+                That is my dream!";
+
+    let p = &gen_prime();
+    let q = &gen_prime();
+    let n = p * q;
+    let k: Int = carmichael_of_primes(p, q);
+
+    let keys = generate_keys(&k);
+    let public = keys.public;
+    let private = keys.private;
+
+    let message = convert_to_int(poem.to_string());
+
+    let encrypted = encrypt(&message, &public, &n);
+    let decoded_as_ints = decrypt(&encrypted, &private, &n);
+    let decoded = convert_to_str(decoded_as_ints);
+    println!("{}", decoded);
+    assert_eq!(poem, decoded);
 }

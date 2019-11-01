@@ -2,6 +2,7 @@ extern crate ramp;
 extern crate rand;
 
 pub mod small_primes;
+pub mod poem;
 
 use ramp::traits::Integer;
 use ramp::Int;
@@ -89,20 +90,12 @@ fn carmichael_of_primes(prime_1: &Int, prime_2: &Int) -> Int {
 }
 
 struct Keys {
-    public: Int,
+    public: (Int, Int),
     private: Int,
 }
 
-fn generate_keys(totient: &Int) -> Keys {
-    let small_rand = 1; // TODO change this
-    let large_rand = 10; // TODO change this
-    let private = 1 + small_rand * totient;
-    let public = 1 + large_rand * totient;
-    return Keys { private, public };
-}
-
-fn encrypt(message: &Int, public: &Int, n: &Int) -> Int {
-    return Int::pow_mod(&message, &public, n);
+fn encrypt(message: &Int, public: &(Int, Int)) -> Int {
+    return Int::pow_mod(&message, &public.0, &public.1);
 }
 
 fn decrypt(encrypted_message: &Int, private: &Int, n: &Int) -> Int {
@@ -146,7 +139,7 @@ fn gcd(u: &Int, v: &Int) -> Int {
 
 fn gen_prime() -> Int {
     let mut rng = OsRng::new().expect("Failed to get OS random generator");
-    let n = 1024;
+    let n = 2048;
     let mut candidate = rng.gen_uint(n);
     candidate.set_bit(0, true);
     candidate.set_bit((n - 1) as u32, true);
@@ -156,58 +149,64 @@ fn gen_prime() -> Int {
     return gen_prime();
 }
 
-fn convert_to_int(str: String) -> Int {
-    let bytes = str.as_bytes().to_vec();
+fn generate_keys() -> Keys {
+    let p = &gen_prime();
+    let q = &gen_prime();
+    let n = p * q;
+    let totient = carmichael_of_primes(p, q);
 
-    let joined = bytes
-        .iter()
-        .map(|&el| format!("{:03o}", el))
-        .collect::<Vec<String>>()
-        .join("");
-
-    return Int::from_str_radix(&joined, 8).expect("damn");
+    let small_rand = 1; // TODO change this
+    let large_rand = 10; // TODO change this
+    let private = 1 + small_rand * &totient;
+    let public = (1 + large_rand * &totient, n);
+    return Keys { private, public };
 }
 
-fn split_into_threes(str: String) -> Vec<String> {
-    if str.len() <= 3 {
+fn split_into(str: String, chunk_size: usize) -> Vec<String> {
+    if str.len() <= chunk_size {
         return vec![str];
     }
-    let (first, last) = str.split_at(3);
+    let (first, last) = str.split_at(chunk_size);
     let mut arr: (Vec<String>) = vec![first.to_string()];
-    arr.append(&mut split_into_threes(last.to_string()));
+    arr.append(&mut split_into(last.to_string(), chunk_size));
     return arr;
 }
 
+fn convert_to_int(str: &str) -> Int {
+    let arr = str.as_bytes();
+
+    let mut int_str = String::new();
+    for byte in arr {
+        int_str.push_str(&format!("{:02x}", byte));
+    }
+    return Int::from_str_radix(&int_str, 16).unwrap();
+}
+
 fn convert_to_str(int: Int) -> String {
-    let octal = int.to_str_radix(8, false);
-    let arr = split_into_threes(octal)
+    let octal = int.to_str_radix(16, false);
+
+    let arr = split_into(octal, 2)
         .iter()
-        .map(|el| u8::from_str_radix(&el, 8).unwrap())
+        .map(|el|  u8::from_str_radix(&el, 16).unwrap() )
         .collect::<Vec<u8>>();
     return String::from_utf8(arr).unwrap();
 }
 
 #[cfg(test)]
 #[test]
-fn test_convert_to_int() {
-    let str = "String and back again.";
+fn test_convert_to_int(){
+    let line = "I mean...I...can fly\nLike a bird in the sky";
+    let expected = Int::from_str_radix("49206d65616e2e2e2e492e2e2e63616e20666c790a4c696b652061206269726420696e2074686520736b79", 16).unwrap();
+    let result = convert_to_int(line);
+    assert_eq!(expected, result);
+}
 
-    let partial_result = convert_to_int(str.to_string());
-    let arr: (Vec<u8>) = vec![
-        83, 116, 114, 105, 110, 103, 32, 97, 110, 100, 32, 98, 97, 99, 107, 32, 97, 103, 97, 105,
-        110, 46,
-    ];
-    let joined = arr
-        .iter()
-        .map(|&el| format!("{:03o}", el))
-        .collect::<Vec<String>>()
-        .join("");
-    let expected = Int::from_str_radix(&joined, 8).expect("damn");
-
-    assert_eq!(expected, partial_result);
-
-    let final_result = convert_to_str(partial_result);
-    assert_eq!(str.to_string(), final_result);
+#[test]
+fn test_convert_to_str(){
+    let int = Int::from_str_radix("49206d65616e2e2e2e492e2e2e63616e20666c790a4c696b652061206269726420696e2074686520736b79", 16).unwrap();
+    let expected = "I mean...I...can fly\nLike a bird in the sky";
+    let result = convert_to_str(int);
+    assert_eq!(expected, result);
 }
 
 #[test]
@@ -219,13 +218,8 @@ fn test_gen_prime_trial_division() {
     } else if &possible_prime % 2 == 0 || &possible_prime % 3 == 0 {
         return assert!(false);
     }
-    println!("possible prime");
-    println!("{}", possible_prime);
-    println!("");
     let mut i = Int::from(5);
     while (&i.square()) <= &possible_prime {
-        // println!("{}", i);
-        // println!("");
         if &possible_prime % &i == 0 || &possible_prime % (&i + 2) == 0 {
             return assert!(false);
         }
@@ -271,21 +265,15 @@ fn test_carmichael_of_primes_2() {
 }
 
 #[test]
-fn test_rsa() {
-    let p = &Int::from(3061);
-    let q = &Int::from(3229);
-    let n = p * q;
-    let k: Int = carmichael_of_primes(p, q);
-
-    let keys = generate_keys(&k);
+fn test_encryption_and_decryption() {
+    let keys = generate_keys();
     let public = keys.public;
     let private = keys.private;
 
     let message = Int::from(43770);
-    let encrypted_message = encrypt(&message, &public, &n);
-    let decoded = decrypt(&encrypted_message, &private, &n);
-    let x = Int::to_str_radix(&decoded, 10, false);
-    println!("{}", x);
+    let encrypted_message = encrypt(&message, &public);
+    let decoded = decrypt(&encrypted_message, &private, &public.1);
+
     assert_eq!(message, decoded);
 }
 
@@ -337,24 +325,17 @@ fn test_titanic_prime() {
 }
 
 #[test]
-fn test_encryption_and_decryption() {
-    let poem = "To fling my arms wide
-                In some place of the sun";
-
-    let p = &gen_prime();
-    let q = &gen_prime();
-    let n = p * q;
-    let k: Int = carmichael_of_primes(p, q);
-
-    let keys = generate_keys(&k);
+fn test_rsa() {
+    let keys = generate_keys();
     let public = keys.public;
     let private = keys.private;
 
-    let message = convert_to_int(poem.to_string());
+    let message = convert_to_int(poem::POEM);
 
-    let encrypted = encrypt(&message, &public, &n);
-    let decoded_as_ints = decrypt(&encrypted, &private, &n);
+    let encrypted = encrypt(&message, &(public));
+    let decoded_as_ints = decrypt(&encrypted, &private, &public.1);
+
     let decoded = convert_to_str(decoded_as_ints);
-    println!("{}", decoded);
-    assert_eq!(poem, decoded);
+
+    assert_eq!(poem::POEM, decoded);
 }

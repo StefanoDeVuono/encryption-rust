@@ -86,3 +86,16 @@ totient = ((p-1) % 4 === 0 && (q-1) % 4 === 0 ) ? e_totient /4 : e_totient
 
     - might a prime p be defined as  _m * 2^k + 1_
     - wilson: can a factorial be described as _x ! = m * 2^k_?, of course, since 2^1... 2^n... x
+
+
+
+if (p- 1) and (q - 1) are not coprime
+then there is an _a_ such that _a|(p - 1)_ and _a|(q - 1)_
+
+the least common multiple of (n,m) is a prime
+the carmichael of that is the totient
+
+_λ(lcm(a,b))=lcm(λ(a),λ(b))_
+_λ(
+    
+)=lcm(λ(a),λ(b))_

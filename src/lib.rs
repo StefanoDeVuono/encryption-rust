@@ -2,96 +2,57 @@ extern crate ramp;
 extern crate rand;
 
 pub mod small_primes;
+pub mod get_prime;
 pub mod poem;
 
 use ramp::traits::Integer;
 use ramp::Int;
-use ramp::RandomInt;
-use rand::rngs::OsRng;
-
-fn div_small_primes(numb: &Int) -> bool {
-    for p in small_primes::SMALL_PRIMES.iter() {
-        let prime = &Int::from(*p);
-        if numb == prime {
-            return true;
-        }
-        if numb % prime == 0 {
-            return false;
-        }
-    }
-    true
-}
-
-fn little_fermat(candidate: &Int) -> bool {
-    let mut rng = OsRng::new().expect("Failed to get OS random generator");
-    let random: Int = rng.gen_uint_below(candidate);
-    let result = Int::pow_mod(&random, &(candidate - &Int::one()), candidate);
-    result == Int::one()
-}
-
-fn rewrite(num: &Int) -> (Int, Int) {
-    let mut ess = 0;
-    while num.bit(ess) {
-        ess += 1;
-    }
-    let dee = num >> (ess as usize);
-    (Int::from(ess), dee)
-}
-
-fn miller_rabin(candidate: &Int, limit: usize) -> bool {
-    let mut rng = OsRng::new().expect("Failed to get OS random generator");
-    let (s, d) = rewrite(&(candidate - &Int::one()));
-    let one = Int::one();
-    let two = &one + &one;
-    for _ in 0..limit {
-        let basis = rng.gen_int_range(&two, &(candidate - &two));
-        let mut y = Int::pow_mod(&basis, &d, candidate);
-
-        if y == one || y == (candidate - &one) {
-            continue;
-        } else {
-            for _ in one.clone()..s - one.clone() {
-                y = Int::pow_mod(&y, &two, candidate);
-                if y == one {
-                    return false;
-                } else if y == candidate - &one {
-                    break;
-                }
-            }
-            return false;
-        }
-    }
-    true
-}
-
-fn is_prime(candidate: &Int) -> bool {
-    // First, simple trial divide
-    if !div_small_primes(candidate) {
-        return false;
-    }
-
-    // Second, Fermat's little theo test on the candidate
-    if !little_fermat(candidate) {
-        return false;
-    }
-
-    // Finally, Miller-Rabin test
-    if !miller_rabin(candidate, 5) {
-        return false;
-    }
-    true
-}
-
-//fn find_large_prime() {}
-
-fn carmichael_of_primes(prime_1: &Int, prime_2: &Int) -> Int {
-    let divisor = gcd(&(prime_1 - 1), &(prime_2 - 1));
-    return (prime_1 - 1) * (prime_2 - 1) / divisor;
-}
 
 struct Keys {
     public: (Int, Int),
     private: Int,
+}
+
+fn _carmichael_of_primes(prime_1: &Int, prime_2: &Int) -> Int {
+    let n:Int = prime_1 - 1;
+    let m = prime_2 - 1;
+    return (&n).lcm(&m);
+}
+
+fn _extended_euclid_algorithm(a: Int, n: Int) -> Int {
+    let mut t = Int::zero();
+    let mut new_t = Int::one();
+    let mut r = n.clone();
+    let mut new_r = a;
+    while new_r != Int::zero() {
+        let q = r.div_floor(&new_r);
+        let temp_t = t;
+        t = new_t;
+        let result_t = temp_t - &q * &t;
+        new_t = result_t;
+
+        let temp_r = r;
+        r = new_r;
+        let result_r = temp_r - &q * &r;
+        new_r = result_r;
+    }
+    if r > Int::one() {
+        return Int::zero();
+    }
+    if t < Int::zero() {
+        return t + n;
+    }
+    return t.clone();
+}
+
+fn _generate_keys(p: &Int,q: &Int) -> Keys {
+    let n = p * q;
+    let k = _carmichael_of_primes(p, q);
+    let e = Int::from(65537); // TODO check that 65537 is not a factor of k
+
+    let public = (e.clone(), n);
+    let private = _extended_euclid_algorithm(e.clone(), k);
+    return Keys { private, public };
 }
 
 fn encrypt(message: &Int, public: &(Int, Int)) -> Int {
@@ -102,77 +63,17 @@ fn decrypt(encrypted_message: &Int, private: &Int, n: &Int) -> Int {
     return Int::pow_mod(&encrypted_message, &private, n);
 }
 
-fn gcd(u: &Int, v: &Int) -> Int {
-    if u == v {
-        return u.clone();
-    }
-
-    if u == &Int::zero() {
-        return v.clone();
-    }
-
-    if v == &Int::zero() {
-        return u.clone();
-    }
-
-    // look for factors of 2
-    if u.is_even() {
-        if v.is_odd() {
-            return gcd(&(u >> 1), v);
-        } else {
-            return gcd(&(u >> 1), &(v >> 1)) << 1;
-        }
-    }
-
-    if v.is_even() {
-        // u is odd, v is even
-        return gcd(u, &(v >> 1));
-    }
-
-    // reduce larger argument
-    if u > v {
-        return gcd(&((u - v) >> 1), v);
-    }
-
-    return gcd(&((v - u) >> 1), u);
-}
-
-fn gen_prime() -> Int {
-    let mut rng = OsRng::new().expect("Failed to get OS random generator");
-    let n = 2048;
-    let mut candidate = rng.gen_uint(n);
-    candidate.set_bit(0, true);
-    candidate.set_bit((n - 1) as u32, true);
-    if is_prime(&candidate) == true {
-        return candidate;
-    }
-    return gen_prime();
-}
-
-fn generate_keys() -> Keys {
-    let p = &gen_prime();
-    let q = &gen_prime();
-    let n = p * q;
-    let totient = carmichael_of_primes(p, q);
-
-    let small_rand = 1; // TODO change this
-    let large_rand = 10; // TODO change this
-    let private = 1 + small_rand * &totient;
-    let public = (1 + large_rand * &totient, n);
-    return Keys { private, public };
-}
-
-fn split_into(str: String, chunk_size: usize) -> Vec<String> {
+fn _split_into(str: String, chunk_size: usize) -> Vec<String> {
     if str.len() <= chunk_size {
         return vec![str];
     }
     let (first, last) = str.split_at(chunk_size);
     let mut arr: (Vec<String>) = vec![first.to_string()];
-    arr.append(&mut split_into(last.to_string(), chunk_size));
+    arr.append(&mut _split_into(last.to_string(), chunk_size));
     return arr;
 }
 
-fn convert_to_int(str: &str) -> Int {
+fn _convert_to_int(str: &str) -> Int {
     let arr = str.as_bytes();
 
     let mut int_str = String::new();
@@ -182,10 +83,10 @@ fn convert_to_int(str: &str) -> Int {
     return Int::from_str_radix(&int_str, 16).unwrap();
 }
 
-fn convert_to_str(int: Int) -> String {
+fn _convert_to_str(int: Int) -> String {
     let octal = int.to_str_radix(16, false);
 
-    let arr = split_into(octal, 2)
+    let arr = _split_into(octal, 2)
         .iter()
         .map(|el|  u8::from_str_radix(&el, 16).unwrap() )
         .collect::<Vec<u8>>();
@@ -194,64 +95,11 @@ fn convert_to_str(int: Int) -> String {
 
 #[cfg(test)]
 #[test]
-fn test_convert_to_int(){
-    let line = "I mean...I...can fly\nLike a bird in the sky";
-    let expected = Int::from_str_radix("49206d65616e2e2e2e492e2e2e63616e20666c790a4c696b652061206269726420696e2074686520736b79", 16).unwrap();
-    let result = convert_to_int(line);
-    assert_eq!(expected, result);
-}
-
-#[test]
-fn test_convert_to_str(){
-    let int = Int::from_str_radix("49206d65616e2e2e2e492e2e2e63616e20666c790a4c696b652061206269726420696e2074686520736b79", 16).unwrap();
-    let expected = "I mean...I...can fly\nLike a bird in the sky";
-    let result = convert_to_str(int);
-    assert_eq!(expected, result);
-}
-
-#[test]
-#[ignore] // it is too expensive
-fn test_gen_prime_trial_division() {
-    let possible_prime = gen_prime();
-    if possible_prime <= 3 {
-        return assert!(possible_prime > 1);
-    } else if &possible_prime % 2 == 0 || &possible_prime % 3 == 0 {
-        return assert!(false);
-    }
-    let mut i = Int::from(5);
-    while (&i.square()) <= &possible_prime {
-        if &possible_prime % &i == 0 || &possible_prime % (&i + 2) == 0 {
-            return assert!(false);
-        }
-        i = &i + 6;
-    }
-    return assert!(true);
-}
-
-#[test]
-fn test_gcd_12() {
-    let p = &Int::from(3060);
-    let q = &Int::from(3228);
-    let divisor = gcd(p, q);
-    let expected = Int::from(12);
-    assert_eq!(expected, divisor);
-}
-
-#[test]
-fn test_gcd_2() {
-    let p = &Int::from(8080);
-    let q = &Int::from(10662);
-    let divisor = gcd(p, q);
-    let expected = Int::from(2);
-    assert_eq!(expected, divisor);
-}
-
-#[test]
 fn test_carmichael_of_primes_12() {
     let p = &Int::from(3061);
     let q = &Int::from(3229);
     let expected = Int::from(823140);
-    let result = carmichael_of_primes(p, q);
+    let result = _carmichael_of_primes(p, q);
     assert_eq!(expected, result);
 }
 
@@ -260,13 +108,56 @@ fn test_carmichael_of_primes_2() {
     let p = &Int::from(8081);
     let q = &Int::from(10663);
     let expected = Int::from(43074480);
-    let result = carmichael_of_primes(p, q);
+    let result = _carmichael_of_primes(p, q);
     assert_eq!(expected, result);
 }
 
 #[test]
+fn test_extended_euclid_algorithm () {
+    let result_1 = _extended_euclid_algorithm(Int::from(3233), Int::from(17));
+    let expected_1 = Int::from(6);
+    assert_eq!(expected_1, result_1);
+
+    let result_2 = _extended_euclid_algorithm(Int::from(43721), Int::from(15361));
+    let expected_2 = Int::from(2881);
+    assert_eq!(expected_2, result_2);
+}
+
+#[test]
+fn test_convert_to_int(){
+    let line = "I mean...I...can fly\nLike a bird in the sky";
+    let expected = Int::from_str_radix("49206d65616e2e2e2e492e2e2e63616e20666c790a4c696b652061206269726420696e2074686520736b79", 16).unwrap();
+    let result = _convert_to_int(line);
+    assert_eq!(expected, result);
+}
+
+#[test]
+fn test_convert_to_str(){
+    let int = Int::from_str_radix("49206d65616e2e2e2e492e2e2e63616e20666c790a4c696b652061206269726420696e2074686520736b79", 16).unwrap();
+    let expected = "I mean...I...can fly\nLike a bird in the sky";
+    let result = _convert_to_str(int);
+    assert_eq!(expected, result);
+}
+
+
+#[test]
+fn test_generate_keys(){
+    let p = Int::from(19);
+    let q = Int::from(7);
+    let keys = _generate_keys(&p, &q);
+
+
+    assert_eq!(keys.public.0, Int::from(65537));
+    assert_eq!(keys.public.1, Int::from(133));
+
+    assert_eq!(keys.private, Int::from(17));
+}
+
+#[test]
 fn test_encryption_and_decryption() {
-    let keys = generate_keys();
+    let p = get_prime::gen_prime();
+    let q = get_prime::gen_prime();
+    let keys = _generate_keys(&p, &q);
     let public = keys.public;
     let private = keys.private;
 
@@ -278,64 +169,22 @@ fn test_encryption_and_decryption() {
 }
 
 #[test]
-fn test_div_small_primes() {
-    let prime = Int::from(1303);
-    let other_prime = Int::from(17881);
-    let not_prime = Int::from(17883);
-    let mut result = div_small_primes(&prime);
-    assert_eq!(result, true);
-    result = div_small_primes(&other_prime);
-    assert_eq!(result, true);
-    result = div_small_primes(&not_prime);
-    assert_eq!(result, false);
-}
-
-#[test]
-fn test_little_fermat() {
-    let prime = Int::from(492876847);
-    let not_prime = Int::from(492876849);
-    let mut result = little_fermat(&prime);
-    assert_eq!(result, true);
-    result = little_fermat(&not_prime);
-    assert_eq!(result, false);
-}
-
-#[test]
-fn test_miller_rabin() {
-    let prime = Int::from(492876847);
-    let not_prime = Int::from(492876849);
-    let mut result = miller_rabin(&prime, 5);
-    assert_eq!(result, true);
-    result = miller_rabin(&not_prime, 5);
-    assert_eq!(result, false);
-}
-
-#[test]
-fn test_titanic_prime() {
-    let ten = Int::from(10);
-    let nine_nine_nine = 999 as usize;
-    let seven = Int::from(7);
-    let thirteen = Int::from(13);
-    let prime = ten.pow(nine_nine_nine) + seven;
-    let not_prime = ten.pow(nine_nine_nine) + thirteen;
-    let mut result = is_prime(&prime);
-    assert_eq!(result, true);
-    result = is_prime(&not_prime);
-    assert_eq!(result, false);
-}
-
-#[test]
 fn test_rsa() {
-    let keys = generate_keys();
+    let p = get_prime::gen_prime();
+    let q = get_prime::gen_prime();
+    let keys = _generate_keys(&p, &q);
     let public = keys.public;
     let private = keys.private;
 
-    let message = convert_to_int(poem::POEM);
+    let message = _convert_to_int(poem::POEM);
 
     let encrypted = encrypt(&message, &(public));
     let decoded_as_ints = decrypt(&encrypted, &private, &public.1);
 
-    let decoded = convert_to_str(decoded_as_ints);
+    println!("{}", encrypted);
+    println!("{}", decoded_as_ints);
+
+    let decoded = _convert_to_str(decoded_as_ints);
 
     assert_eq!(poem::POEM, decoded);
 }
